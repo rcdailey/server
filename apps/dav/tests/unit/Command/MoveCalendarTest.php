@@ -24,12 +24,9 @@ use InvalidArgumentException;
 use OCA\DAV\CalDAV\CalDavBackend;
 use OCA\DAV\Command\MoveCalendar;
 use OCP\IConfig;
-use OCP\IDBConnection;
 use OCP\IGroupManager;
 use OCP\IL10N;
 use OCP\IUserManager;
-use OCP\IUserSession;
-use OCP\Share\IManager;
 use Symfony\Component\Console\Tester\CommandTester;
 use Test\TestCase;
 
@@ -38,7 +35,6 @@ use Test\TestCase;
  * Class MoveCalendarTest
  *
  * @package OCA\DAV\Tests\Command
- * @group DB
  */
 class MoveCalendarTest extends TestCase {
 

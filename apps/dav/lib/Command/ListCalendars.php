@@ -3,6 +3,7 @@
  * @copyright Copyright (c) 2018, Georg Ehrke
  *
  * @author Georg Ehrke <oc.list@georgehrke.com>
+ * @author Thomas Citharel <tcit@tcit.fr>
  *
  * @license AGPL-3.0
  *
@@ -41,40 +42,17 @@ class ListCalendars extends Command {
 	/** @var IUserManager */
 	protected $userManager;
 
-	/** @var IGroupManager $groupManager */
-	private $groupManager;
-
-	/** @var \OCP\IDBConnection */
-	protected $dbConnection;
-
-	/** @var IManager */
-	private $shareManager;
-
-	/** @var IUserSession */
-	private $userSession;
-
-	/** @var IConfig */
-	private $config;
+	/** @var CalDavBackend */
+	private $caldav;
 
 	/**
 	 * @param IUserManager $userManager
-	 * @param IGroupManager $groupManager
-	 * @param IDBConnection $dbConnection
+	 * @param CalDavBackend $caldav
 	 */
-	function __construct(IUserManager $userManager,
-		IGroupManager $groupManager,
-		IDBConnection $dbConnection,
-		IManager $shareManager,
-		IUserSession $userSession,
-		IConfig $config
-		) {
+	function __construct(IUserManager $userManager, CalDavBackend $caldav) {
 		parent::__construct();
 		$this->userManager = $userManager;
-		$this->groupManager = $groupManager;
-		$this->dbConnection = $dbConnection;
-		$this->shareManager = $shareManager;
-		$this->userSession = $userSession;
-		$this->config = $config;
+		$this->caldav = $caldav;
 	}
 
 	protected function configure() {
@@ -89,25 +67,10 @@ class ListCalendars extends Command {
 	protected function execute(InputInterface $input, OutputInterface $output) {
 		$user = $input->getArgument('user');
 		if (!$this->userManager->userExists($user)) {
-			throw new \InvalidArgumentException("User <$user> in unknown.");
+			throw new \InvalidArgumentException("User <$user> is unknown.");
 		}
 
-		$principalBackend = new Principal(
-			$this->userManager,
-			$this->groupManager,
-			$this->shareManager,
-			$this->userSession,
-			$this->config
-		);
-		$random = \OC::$server->getSecureRandom();
-		$logger = \OC::$server->getLogger();
-		$dispatcher = \OC::$server->getEventDispatcher();
-
-		$caldav = new CalDavBackend($this->dbConnection, $principalBackend,
-			$this->userManager, $this->groupManager, $random, $logger,
-			$dispatcher);
-
-		$calendars = $caldav->getCalendarsForUser("principals/users/$user");
+		$calendars = $this->caldav->getCalendarsForUser("principals/users/$user");
 
 		$calendarTableData = [];
 		foreach($calendars as $calendar) {
@@ -131,11 +94,15 @@ class ListCalendars extends Command {
 			];
 		}
 
-		$table = new Table($output);
-		$table->setHeaders(['uri', 'displayname', 'owner\'s userid', 'owner\'s displayname', 'writable'])
-			->setRows($calendarTableData);
+		if (count($calendarTableData) > 0) {
+			$table = new Table($output);
+			$table->setHeaders(['uri', 'displayname', 'owner\'s userid', 'owner\'s displayname', 'writable'])
+				->setRows($calendarTableData);
 
-		$table->render();
+			$table->render();
+		} else {
+			$output->writeln("<info>User <$user> has no calendars</info>");
+		}
 	}
 
 }
